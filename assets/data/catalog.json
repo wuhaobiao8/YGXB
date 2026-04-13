@@ -1,0 +1,18 @@
+{
+  "default": "builtin-demo",
+  "datasets": [
+    {
+      "id": "builtin-demo",
+      "name": "内置 3D 矿区示例",
+      "type": "builtin-demo",
+      "description": "程序生成的三维矿区演示场景，适合默认首页展示。"
+    },
+    {
+      "id": "da1-pointcloud-demo",
+      "name": "DA1 激光点云示意",
+      "type": "pointcloud-json",
+      "path": "./assets/data/pointcloud/da1_demo_points.json",
+      "description": "由 DA1clipped_cloud_merged.las 裁剪和抽稀得到的轻量点云示意数据。"
+    }
+  ]
+}
