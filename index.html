@@ -1,1 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智慧矿区三维可视化平台</title>
+  <style>
+    :root{--bg:#040b16;--panel:rgba(7,27,48,.76);--line:rgba(76,205,255,.22);--cyan:#4fd4ff;--cyan-soft:#6ce4ff;--blue:#158dff;--teal:#35f0dd;--text:#e8f7ff;--muted:#84a9c7;--danger:#ff6a6a;--shadow:0 24px 60px rgba(0,0,0,.38);--radius:22px}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:radial-gradient(circle at 20% 20%,rgba(17,94,163,.3),transparent 28%),radial-gradient(circle at 80% 10%,rgba(76,205,255,.12),transparent 20%),linear-gradient(180deg,#08111f 0%,#020711 100%);color:var(--text);font-family:"Bahnschrift","Segoe UI","Microsoft YaHei",sans-serif;overflow-x:hidden}
+    body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0}
+    body::before{background:linear-gradient(rgba(79,212,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(79,212,255,.045) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 48%,transparent 88%)}
+    body::after{background:radial-gradient(circle at center,rgba(34,211,238,.05),transparent 36%),radial-gradient(circle at center,rgba(255,255,255,.025),transparent 70%);mix-blend-mode:screen}
+    .dashboard{position:relative;z-index:1;min-height:100vh;padding:18px 20px 24px}
+    .topbar{display:grid;grid-template-columns:1fr minmax(360px,620px) 1fr;align-items:center;gap:18px;margin-bottom:18px}
+    .status-band,.sys-band{display:flex;align-items:center;gap:12px;min-height:64px;padding:0 18px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,rgba(7,30,54,.86),rgba(4,14,28,.82));box-shadow:inset 0 0 18px rgba(24,144,255,.1)}
+    .status-band{justify-content:flex-start}.sys-band{justify-content:flex-end;flex-wrap:wrap}
+    .status-chip,.sys-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid rgba(79,212,255,.18);background:rgba(79,212,255,.06);color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+    .status-chip strong,.sys-chip strong{color:var(--text);font-weight:700}
+    .title-beam{position:relative;min-height:86px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-radius:24px 24px 34px 34px;border:1px solid rgba(79,212,255,.22);background:linear-gradient(180deg,rgba(11,41,71,.98),rgba(6,23,43,.98));box-shadow:0 18px 34px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);overflow:hidden}
+    .title-beam::before,.title-beam::after{content:"";position:absolute;top:14px;bottom:14px;width:110px;border-top:2px solid rgba(79,212,255,.18);border-bottom:2px solid rgba(79,212,255,.12);opacity:.9}
+    .title-beam::before{left:-40px;transform:skewX(-36deg);background:linear-gradient(90deg,transparent,rgba(79,212,255,.12))}
+    .title-beam::after{right:-40px;transform:skewX(36deg);background:linear-gradient(-90deg,transparent,rgba(79,212,255,.12))}
+    .title-main{margin:0;font-size:clamp(26px,2.5vw,44px);font-weight:800;letter-spacing:.16em;text-shadow:0 0 24px rgba(79,212,255,.35)}
+    .title-sub{margin-top:6px;color:#8ec8eb;font-size:12px;letter-spacing:.35em;text-transform:uppercase}
+    .main-grid{display:grid;grid-template-columns:320px minmax(0,1fr) 320px;gap:18px;align-items:start}
+    .side-column,.center-column{display:grid;gap:18px}
+    .panel{position:relative;border-radius:var(--radius);border:1px solid var(--line);background:linear-gradient(180deg,rgba(8,28,49,.9),rgba(4,15,28,.84));box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.03);overflow:hidden}
+    .panel::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(79,212,255,.06),transparent 34%),linear-gradient(225deg,rgba(21,141,255,.08),transparent 36%);pointer-events:none}
+    .panel-header{position:relative;z-index:1;min-height:58px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,rgba(26,141,247,.88),rgba(13,74,126,.86));clip-path:polygon(0 0,calc(100% - 16px) 0,100% 50%,calc(100% - 16px) 100%,0 100%,12px 50%);box-shadow:inset 0 -1px 0 rgba(255,255,255,.12)}
+    .panel-header h2{margin:0;font-size:20px;font-weight:800;letter-spacing:.14em}
+    .panel-header small{color:rgba(232,247,255,.78);font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+    .panel-body{position:relative;z-index:1;padding:18px}
+    .days-panel{display:grid;grid-template-columns:148px 1fr;gap:18px;align-items:center}
+    .days-ring{width:148px;height:148px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at center,rgba(6,23,43,.98) 45%,transparent 46%),conic-gradient(var(--cyan) 0 78%,rgba(79,212,255,.14) 78% 100%);border:1px solid rgba(79,212,255,.16);box-shadow:inset 0 0 22px rgba(79,212,255,.18)}
+    .days-ring::before{content:"";width:118px;height:118px;border-radius:50%;border:1px dashed rgba(79,212,255,.22);position:absolute;animation:spin 18s linear infinite}
+    .days-value{display:flex;flex-direction:column;align-items:center;gap:4px}.days-value strong{font-size:42px;line-height:1}.days-value span{font-size:12px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+    .stat-rows,.records,.status-list,.bar-track,.legend-list,.meta-grid{display:grid;gap:10px}
+    .stat-row,.status-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(79,212,255,.05);border:1px solid rgba(79,212,255,.1)}
+    .stat-row span,.status-item span,.summary-head p,.meta-card p,.hero-title,.footer-note,.bar-col span,.record-main span,.meta-row span,.legend-item span{color:var(--muted)}
+    .stat-row strong,.status-item strong{font-size:18px;color:var(--text)}
+    .metric-grid,.summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .metric-card,.summary-item{padding:16px 14px;border-radius:18px;background:linear-gradient(180deg,rgba(8,35,61,.92),rgba(4,18,32,.84));border:1px solid rgba(79,212,255,.1);box-shadow:inset 0 0 16px rgba(79,212,255,.06)}
+    .metric-card .eyebrow,.summary-item span{font-size:12px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+    .metric-card strong{display:block;margin-top:8px;font-size:30px;line-height:1}.metric-card span{display:block;margin-top:10px;font-size:12px;color:#9cc7df}
+    .radar-panel,.ring-panel{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:center}.ring-panel{grid-template-columns:1fr 1fr}
+    .radar-shell{position:relative;width:160px;height:160px;margin:0 auto}.radar-shell svg{width:100%;height:100%;overflow:visible}
+    .bar-track label,.meta-row,.legend-item,.hero-top,.summary-head,.footer-note{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .bar-track label{font-size:12px}.progress{height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;border:1px solid rgba(79,212,255,.08)}
+    .progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cyan),var(--teal));box-shadow:0 0 14px rgba(79,212,255,.28)}
+    .hero-panel{padding:18px;min-height:760px;display:grid;grid-template-rows:auto 1fr auto;gap:18px}
+    .hero-tagline,.hero-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .hero-chip,.status-tag,.record-level,.action-button,.ghost-button{border-radius:999px}
+    .hero-chip{padding:8px 14px;border:1px solid rgba(79,212,255,.14);background:rgba(79,212,255,.06);color:#bde8ff;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+    .action-button,.ghost-button{min-height:42px;padding:9px 16px;border:1px solid rgba(79,212,255,.18);font-size:13px;font-weight:700;letter-spacing:.08em;cursor:pointer;transition:.2s ease}
+    .action-button{color:#fff;background:linear-gradient(135deg,var(--blue),#1ec8ff);box-shadow:0 14px 24px rgba(21,141,255,.24)}
+    .ghost-button{color:var(--cyan-soft);background:rgba(79,212,255,.06)}#local-tiff-input{display:none}
+    .action-button:hover,.ghost-button:hover{transform:translateY(-1px);border-color:rgba(79,212,255,.32)}
+    .scene-wrapper{position:relative;border-radius:30px;border:1px solid rgba(79,212,255,.12);background:radial-gradient(circle at center,rgba(79,212,255,.1),transparent 34%),linear-gradient(180deg,rgba(9,24,42,.92),rgba(4,12,24,.94));overflow:hidden;min-height:560px}
+    .scene-wrapper::before,.scene-wrapper::after{content:"";position:absolute;inset:0;pointer-events:none}
+    .scene-wrapper::before{background:radial-gradient(circle at center,rgba(255,255,255,.08),transparent 48%),linear-gradient(rgba(79,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(79,212,255,.04) 1px,transparent 1px);background-size:auto,36px 36px,36px 36px;mask-image:radial-gradient(circle at center,black 54%,transparent 100%)}
+    .scene-wrapper::after{background:linear-gradient(180deg,rgba(6,18,33,.04),rgba(2,8,16,.56))}
+    .scene-stage{position:absolute;inset:0;padding:26px;display:grid;grid-template-columns:76px 1fr;gap:18px;align-items:center}
+    .control-rail{display:grid;gap:12px;align-content:center;z-index:2}
+    .control-pill{padding:12px 10px;text-align:center;border-radius:16px;border:1px solid rgba(79,212,255,.18);background:linear-gradient(180deg,rgba(14,53,91,.9),rgba(6,25,44,.86));color:#dff7ff;font-size:12px;letter-spacing:.12em;box-shadow:inset 0 0 18px rgba(79,212,255,.08)}
+    .terrain-arena{position:relative;height:100%;min-height:500px;display:grid;place-items:center}
+    .mine-view{position:relative;width:min(68vw,780px);height:min(48vw,520px);min-width:min(100%,560px);min-height:360px;border-radius:30px;border:1px solid rgba(79,212,255,.16);background:radial-gradient(circle at 50% 30%,rgba(79,212,255,.12),transparent 44%),linear-gradient(180deg,rgba(6,18,33,.45),rgba(2,8,16,.78));box-shadow:inset 0 0 50px rgba(79,212,255,.08),0 22px 45px rgba(0,0,0,.28);overflow:hidden}
+    .mine-view::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(79,212,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(79,212,255,.035) 1px,transparent 1px);background-size:34px 34px;pointer-events:none}
+    .mine-view canvas{display:block;width:100%;height:100%}
+    .terrain-halo{position:absolute;width:72%;height:60%;border-radius:50%;background:radial-gradient(circle,rgba(79,212,255,.24),transparent 68%);filter:blur(24px);transform:translateY(90px)}
+    .terrain-shadow{position:absolute;width:min(62vw,640px);height:140px;border-radius:50%;background:radial-gradient(circle,rgba(17,33,54,.88),transparent 66%);filter:blur(16px);transform:translate(70px,175px)}
+    .terrain-cluster{position:relative;width:min(62vw,700px);aspect-ratio:1.24/1;transform-style:preserve-3d;transform:rotateX(63deg) rotateZ(-34deg);filter:drop-shadow(0 45px 55px rgba(0,0,0,.38))}
+    .terrain-slice{position:absolute;inset:0;border-radius:30px;background-size:cover;background-position:center;border:1px solid rgba(189,236,255,.18);box-shadow:inset 0 0 30px rgba(255,255,255,.06);overflow:hidden;transform-origin:center center}
+    .terrain-slice::before,.terrain-slice::after{content:"";position:absolute;left:0;right:0;pointer-events:none}
+    .terrain-slice::before{top:0;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent 20%,transparent 74%,rgba(3,12,22,.26)),linear-gradient(90deg,rgba(255,255,255,.06),transparent 28%,transparent 72%,rgba(0,0,0,.16));mix-blend-mode:screen}
+    .terrain-slice::after{top:calc(100% - 1px);height:34px;border-radius:0 0 28px 28px;background:linear-gradient(180deg,rgba(255,226,195,.7),rgba(142,103,77,.74)),linear-gradient(90deg,rgba(255,255,255,.15),transparent 30%);box-shadow:0 6px 10px rgba(0,0,0,.16)}
+    .terrain-slice.top{background-image:none;background-color:rgba(24,70,42,.32);z-index:8}.terrain-slice.top::after{height:26px;background:linear-gradient(180deg,rgba(185,151,123,.94),rgba(128,93,69,.88))}
+    .terrain-surface{position:absolute;inset:0;border-radius:inherit;overflow:hidden}#terrain-canvas{width:100%;height:100%;display:block;background:linear-gradient(180deg,#294f2e,#141f1a);filter:saturate(1.1) contrast(1.08)}
+    .scan-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(79,212,255,.08),transparent 22%,transparent 78%,rgba(79,212,255,.08)),linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:auto,100% 6px;mix-blend-mode:screen;pointer-events:none}
+    .scan-line{position:absolute;left:-10%;right:-10%;top:0;height:18%;background:linear-gradient(180deg,rgba(79,212,255,0),rgba(79,212,255,.18),rgba(79,212,255,0));filter:blur(14px);animation:sweep 5.8s ease-in-out infinite;pointer-events:none}
+    .scene-tag{position:absolute;display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:14px;background:rgba(9,33,55,.84);border:1px solid rgba(79,212,255,.16);color:#dff7ff;font-size:12px;letter-spacing:.08em;box-shadow:0 10px 20px rgba(0,0,0,.24);z-index:2}
+    .scene-tag::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px rgba(53,240,221,.7)}
+    .scene-tag.top-left{left:16%;top:16%}.scene-tag.top-right{right:10%;top:18%}.scene-tag.center-right{right:6%;top:42%}.scene-tag.bottom-left{left:12%;bottom:20%}.scene-tag.bottom-right{right:18%;bottom:14%}
+    .hero-bottom{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:stretch}
+    .summary-card,.meta-card{min-height:156px;padding:18px;border-radius:24px;border:1px solid rgba(79,212,255,.12);background:linear-gradient(180deg,rgba(7,28,49,.92),rgba(3,13,26,.86))}
+    .summary-head h3,.meta-card h3{margin:0;font-size:22px;letter-spacing:.08em}
+    .summary-head p,.meta-card p{margin:8px 0 0;font-size:13px;line-height:1.7}
+    .summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .summary-item strong{display:block;margin-top:8px;font-size:24px;line-height:1.1}
+    .meta-row{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}.meta-row:last-child,.record-item:last-child{border-bottom:none}.meta-row strong{color:var(--text);text-align:right;word-break:break-all}
+    .ring-chart{width:176px;height:176px;margin:0 auto;border-radius:50%;background:radial-gradient(circle at center,rgba(6,23,43,.98) 42%,transparent 43%),conic-gradient(var(--cyan) 0 30%,#34f0dd 30% 58%,#ffe172 58% 82%,#1f8dff 82% 100%);position:relative;box-shadow:inset 0 0 20px rgba(79,212,255,.15)}
+    .ring-chart::after{content:"风险指数\A 87.4";white-space:pre;position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:14px;color:var(--text);font-weight:700;letter-spacing:.1em}
+    .legend-item b{display:inline-flex;align-items:center;gap:8px;font-weight:600}.legend-item b::before{content:"";width:11px;height:11px;border-radius:50%;background:var(--item-color,var(--cyan));box-shadow:0 0 10px var(--item-color,var(--cyan))}
+    .bars-panel{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px;align-items:end;min-height:236px;padding-top:20px}
+    .bar-col{display:flex;flex-direction:column;align-items:center;gap:8px}.bar{width:100%;min-height:30px;height:calc(var(--h) * 1%);border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,rgba(79,212,255,.92),rgba(21,141,255,.34));box-shadow:0 0 12px rgba(79,212,255,.18);position:relative;overflow:hidden}.bar::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.22),transparent 36%)}
+    .record-item{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+    .record-index{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:rgba(79,212,255,.1);border:1px solid rgba(79,212,255,.14);color:var(--cyan-soft);font-size:12px;font-weight:700}
+    .record-main strong{display:block;font-size:13px;line-height:1.5}.record-main span{font-size:12px}
+    .record-level,.status-tag{padding:6px 10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+    .record-level.high{color:#ffd7d7;background:rgba(255,106,106,.12);border:1px solid rgba(255,106,106,.18)}.record-level.medium{color:#ffe6b1;background:rgba(255,199,101,.12);border:1px solid rgba(255,199,101,.18)}
+    .status-tag{color:#c7ffe8;background:rgba(53,240,221,.12);border:1px solid rgba(53,240,221,.18)}
+    .status-banner{padding:10px 14px;border-radius:16px;background:rgba(79,212,255,.06);border:1px solid rgba(79,212,255,.12)}.status-banner.error{color:#ffd7d7;background:rgba(255,106,106,.1);border-color:rgba(255,106,106,.18)}
+    @keyframes sweep{0%{transform:translateY(-26%)}50%{transform:translateY(280%)}100%{transform:translateY(560%)}}@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    @media (max-width:1500px){.main-grid{grid-template-columns:280px minmax(0,1fr) 280px}.hero-bottom{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:1220px){.topbar,.main-grid,.days-panel,.radar-panel,.ring-panel,.hero-bottom{grid-template-columns:1fr}.scene-stage{grid-template-columns:1fr}.control-rail{grid-auto-flow:column;justify-content:center;align-content:start}.terrain-arena{min-height:440px}}
+    @media (max-width:760px){.dashboard{padding:14px}.hero-panel{min-height:auto}.summary-grid,.metric-grid{grid-template-columns:1fr}.terrain-cluster{width:94%}.scene-tag{display:none}.status-band,.sys-band{padding:10px 12px}.title-main{letter-spacing:.08em}}
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <header class="topbar">
+      <div class="status-band">
+        <div class="status-chip"><strong id="clock">--:--:--</strong></div>
+        <div class="status-chip"><strong>北斗授时</strong> 已锁定</div>
+        <div class="status-chip"><strong>地形解算</strong> 运行中</div>
+      </div>
+      <div class="title-beam">
+        <h1 class="title-main">智慧矿区三维可视化平台</h1>
+        <div class="title-sub">Smart Mine 3D Command Display</div>
+      </div>
+      <div class="sys-band">
+        <div class="sys-chip"><strong>公网预览</strong> Static Ready</div>
+        <div class="sys-chip"><strong>主图来源</strong> Repository TIFF</div>
+        <div class="sys-chip"><strong>系统状态</strong> Online</div>
+      </div>
+    </header>
 
+    <main class="main-grid">
+      <aside class="side-column">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>安全运行天数</h2>
+            <small>Safe Run</small>
+          </div>
+          <div class="panel-body days-panel">
+            <div class="days-ring">
+              <div class="days-value">
+                <strong>375</strong>
+                <span>Days</span>
+              </div>
+            </div>
+            <div class="stat-rows">
+              <div class="stat-row"><span>连续稳定生产</span><strong>375 天</strong></div>
+              <div class="stat-row"><span>采场巡检完成率</span><strong>98.6%</strong></div>
+              <div class="stat-row"><span>通风系统健康度</span><strong>93.2%</strong></div>
+              <div class="stat-row"><span>今日重大告警</span><strong>0 条</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>主设备统计</h2>
+            <small>Equipment</small>
+          </div>
+          <div class="panel-body metric-grid">
+            <div class="metric-card"><div class="eyebrow">钻机系统</div><strong>03</strong><span>运行良好 / 1 台待保养</span></div>
+            <div class="metric-card"><div class="eyebrow">运输车辆</div><strong>09</strong><span>自动调度 / 空载率 11%</span></div>
+            <div class="metric-card"><div class="eyebrow">通风系统</div><strong>05</strong><span>风量平稳 / 粉尘值下降</span></div>
+            <div class="metric-card"><div class="eyebrow">排水系统</div><strong>06</strong><span>抽排能力 98% 在线</span></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>设备状态雷达</h2>
+            <small>Device Radar</small>
+          </div>
+          <div class="panel-body radar-panel">
+            <div class="radar-shell">
+              <svg viewBox="0 0 160 160" aria-hidden="true">
+                <g stroke="rgba(79,212,255,0.15)" fill="none">
+                  <polygon points="80,12 140,48 124,120 36,120 20,48"></polygon>
+                  <polygon points="80,28 124,54 112,106 48,106 36,54"></polygon>
+                  <polygon points="80,44 110,60 101,92 59,92 50,60"></polygon>
+                  <line x1="80" y1="12" x2="80" y2="120"></line>
+                  <line x1="20" y1="48" x2="140" y2="48"></line>
+                  <line x1="36" y1="120" x2="124" y2="120"></line>
+                </g>
+                <polygon points="80,30 122,58 102,103 54,96 46,56" fill="rgba(79,212,255,0.22)" stroke="rgba(79,212,255,0.86)" stroke-width="2"></polygon>
+                <polygon points="80,40 112,60 96,94 60,90 56,62" fill="rgba(53,240,221,0.12)" stroke="rgba(53,240,221,0.75)" stroke-width="2"></polygon>
+              </svg>
+            </div>
+            <div class="radar-labels">
+              <div class="bar-track"><label><span>监控系统</span><strong>91%</strong></label><div class="progress"><span style="width:91%"></span></div></div>
+              <div class="bar-track"><label><span>传感网络</span><strong>87%</strong></label><div class="progress"><span style="width:87%"></span></div></div>
+              <div class="bar-track"><label><span>消防联动</span><strong>95%</strong></label><div class="progress"><span style="width:95%"></span></div></div>
+              <div class="bar-track"><label><span>调压系统</span><strong>82%</strong></label><div class="progress"><span style="width:82%"></span></div></div>
+              <div class="bar-track"><label><span>定位系统</span><strong>89%</strong></label><div class="progress"><span style="width:89%"></span></div></div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="center-column">
+        <section class="panel hero-panel">
+          <div class="hero-top">
+            <div>
+              <p class="hero-title">三维矿区主场景 / 默认打开内置可旋转示例，TIFF 作为可选地形输入</p>
+              <div class="hero-tagline">
+                <div class="hero-chip">地质分析</div>
+                <div class="hero-chip">矿体分层</div>
+                <div class="hero-chip">剖面展示</div>
+                <div class="hero-chip">公开链接可见</div>
+              </div>
+            </div>
+            <div class="hero-actions">
+              <label class="action-button" for="local-tiff-input">加载本地 TIFF 地形</label>
+              <input id="local-tiff-input" type="file" accept=".tif,.tiff,image/tiff">
+              <button id="reload-default" class="ghost-button" type="button">恢复 3D 示例</button>
+            </div>
+          </div>
+
+          <div class="scene-wrapper">
+            <div class="scene-stage">
+              <div class="control-rail">
+                <div class="control-pill">总览</div>
+                <div class="control-pill">综合集控</div>
+                <div class="control-pill">安全生产</div>
+                <div class="control-pill">地质分析</div>
+                <div class="control-pill">智能巡检</div>
+              </div>
+
+              <div class="terrain-arena">
+                <div class="terrain-halo"></div>
+                <div class="terrain-shadow"></div>
+                <div id="mine-view" class="mine-view"></div>
+                <div class="scene-tag top-left">主井口</div>
+                <div class="scene-tag top-right">采矿作业区</div>
+                <div class="scene-tag center-right">洗选车间</div>
+                <div class="scene-tag bottom-left">排土平台</div>
+                <div class="scene-tag bottom-right">矿卡通道</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-bottom">
+            <div class="summary-card">
+              <div class="summary-head">
+                <div>
+                  <h3>矿区三维可视化主展示</h3>
+                  <p>页面默认打开内置轻量三维矿区示例，访客点击公开链接后即可直接拖拽旋转查看。你也可以再加载自己的 <code>.tif</code>，把它转换成同一个三维地形场景。</p>
+                </div>
+              </div>
+              <div class="summary-grid">
+                <div class="summary-item"><span>日处理量</span><strong>18.7 万吨</strong></div>
+                <div class="summary-item"><span>采场面积</span><strong>1450.3 m²</strong></div>
+                <div class="summary-item"><span>边坡稳定系数</span><strong>1.36</strong></div>
+                <div class="summary-item"><span>告警闭环率</span><strong>97.1%</strong></div>
+              </div>
+            </div>
+
+            <div class="meta-card">
+              <h3>当前栅格元数据</h3>
+              <p>这里显示当前主场景 TIFF 的来源与解析信息。</p>
+              <div class="meta-grid">
+                <div class="meta-row"><span>当前模式</span><strong id="meta-name">内置 3D 示例</strong></div>
+                <div class="meta-row"><span>来源</span><strong id="meta-source">仓库示例场景</strong></div>
+                <div class="meta-row"><span>尺寸</span><strong id="meta-dimensions">-</strong></div>
+                <div class="meta-row"><span>页数</span><strong id="meta-pages">-</strong></div>
+                <div class="meta-row"><span>通道数</span><strong id="meta-channels">-</strong></div>
+                <div class="meta-row"><span>位深</span><strong id="meta-bits">-</strong></div>
+                <div class="meta-row"><span>文件大小</span><strong id="meta-size">-</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="side-column">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>预警频谱</h2>
+            <small>Warning Spectrum</small>
+          </div>
+          <div class="panel-body ring-panel">
+            <div class="ring-chart"></div>
+            <div class="legend-list">
+              <div class="legend-item"><b style="--item-color:#4fd4ff">边坡监测</b><span>30%</span></div>
+              <div class="legend-item"><b style="--item-color:#34f0dd">瓦斯浓度</b><span>28%</span></div>
+              <div class="legend-item"><b style="--item-color:#ffe172">设备保养</b><span>24%</span></div>
+              <div class="legend-item"><b style="--item-color:#1f8dff">排水状态</b><span>18%</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>采区产能统计</h2>
+            <small>Output Chart</small>
+          </div>
+          <div class="panel-body">
+            <div class="bars-panel">
+              <div class="bar-col"><div class="bar" style="--h:58"></div><span>1月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:48"></div><span>2月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:46"></div><span>3月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:42"></div><span>4月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:69"></div><span>5月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:33"></div><span>6月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:76"></div><span>7月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:52"></div><span>8月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:71"></div><span>9月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:60"></div><span>10月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:49"></div><span>11月</span></div>
+              <div class="bar-col"><div class="bar" style="--h:79"></div><span>12月</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>预警记录</h2>
+            <small>Event Stream</small>
+          </div>
+          <div class="panel-body records">
+            <div class="record-item"><div class="record-index">1</div><div class="record-main"><strong>七号边坡位移波动升高</strong><span>2026-04-13 20:32 · 自动复核完成</span></div><div class="record-level high">High</div></div>
+            <div class="record-item"><div class="record-index">2</div><div class="record-main"><strong>北区运输带检修工单触发</strong><span>2026-04-13 18:40 · 派单中</span></div><div class="record-level medium">Medium</div></div>
+            <div class="record-item"><div class="record-index">3</div><div class="record-main"><strong>井下风速数据短时离群</strong><span>2026-04-13 16:12 · 已恢复</span></div><div class="record-level medium">Medium</div></div>
+            <div class="record-item"><div class="record-index">4</div><div class="record-main"><strong>排水池液位接近阈值</strong><span>2026-04-13 12:05 · 联动排水启动</span></div><div class="record-level high">High</div></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>链路与发布状态</h2>
+            <small>Publish</small>
+          </div>
+          <div class="panel-body">
+            <div id="status-banner" class="status-banner">正在启动内置三维矿区示例...</div>
+            <div class="status-list">
+              <div class="status-item"><span>仓库内置主图</span><div class="status-tag">Ready</div></div>
+              <div class="status-item"><span>静态页面可直接部署</span><div class="status-tag">Ready</div></div>
+              <div class="status-item"><span>GitHub Pages 兼容</span><div class="status-tag">Ready</div></div>
+              <div class="status-item"><span>访客无需本地文件</span><div class="status-tag">Ready</div></div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <div class="footer-note">
+      <div>默认访问逻辑：打开页面后直接进入内置三维矿区示例，可选再加载你自己的 TIFF 地形。</div>
+      <div>建议发布方式：推送到 GitHub 仓库后，开启 GitHub Pages，让外部访客通过公开链接访问。</div>
+    </div>
+  </div>
+
+  <script src="./assets/UTIF.min.js"></script>
+  <script type="module">
+    import * as THREE from "./assets/vendor/three.module.js";
+    import { OrbitControls } from "./assets/vendor/OrbitControls.js";
+
+    const mineView = document.getElementById("mine-view");
+    const clockEl = document.getElementById("clock");
+    const localTiffInput = document.getElementById("local-tiff-input");
+    const reloadDefaultButton = document.getElementById("reload-default");
+    const statusBanner = document.getElementById("status-banner");
+    const metaEls = {
+      name: document.getElementById("meta-name"),
+      source: document.getElementById("meta-source"),
+      dimensions: document.getElementById("meta-dimensions"),
+      pages: document.getElementById("meta-pages"),
+      channels: document.getElementById("meta-channels"),
+      bits: document.getElementById("meta-bits"),
+      size: document.getElementById("meta-size")
+    };
+
+    let renderer;
+    let scene;
+    let camera;
+    let controls;
+    let terrainMesh;
+    let terrainGeometry;
+    let terrainHeightFn;
+    let facilityGroup;
+    let sparkGroup;
+
+    function updateClock() {
+      const now = new Date();
+      const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+      const time = [String(now.getHours()).padStart(2, "0"), String(now.getMinutes()).padStart(2, "0"), String(now.getSeconds()).padStart(2, "0")].join(":");
+      clockEl.textContent = `${date} ${time}`;
+    }
+
+    function setStatus(message, isError = false) {
+      statusBanner.textContent = message;
+      statusBanner.classList.toggle("error", Boolean(isError));
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes) || bytes <= 0) return "-";
+      const units = ["B", "KB", "MB", "GB"];
+      let value = bytes;
+      let unitIndex = 0;
+      while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+      }
+      return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+    }
+
+    function updateMeta(meta) {
+      metaEls.name.textContent = meta.name || "-";
+      metaEls.source.textContent = meta.source || "-";
+      metaEls.dimensions.textContent = meta.dimensions || "-";
+      metaEls.pages.textContent = meta.pages || "-";
+      metaEls.channels.textContent = meta.channels || "-";
+      metaEls.bits.textContent = meta.bits || "-";
+      metaEls.size.textContent = meta.size || "-";
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function colorFromHeight(height, pitMask) {
+      if (pitMask > 0.78) return new THREE.Color(0x9f8263);
+      if (height < -12) return new THREE.Color(0x8d6f55);
+      if (height < -4) return new THREE.Color(0xa88d67);
+      if (height < 6) return new THREE.Color(0x688a4c);
+      if (height < 18) return new THREE.Color(0x4f7f45);
+      return new THREE.Color(0x7aa26a);
+    }
+
+    function computeDemoHeight(x, z) {
+      const nx = x / 110;
+      const nz = z / 90;
+      const pitA = Math.exp(-((nx + 0.18) ** 2 * 18 + (nz - 0.04) ** 2 * 10));
+      const pitB = Math.exp(-((nx - 0.06) ** 2 * 26 + (nz + 0.12) ** 2 * 18));
+      const ridge = Math.sin(nx * 4.4) * 4.4 + Math.cos(nz * 5.1) * 3.8 + Math.sin((nx - nz) * 6.2) * 2.4;
+      let height = 17 + ridge - pitA * 42 - pitB * 24;
+      if (pitA > 0.16 || pitB > 0.12) {
+        height = Math.floor(height / 2.8) * 2.8;
+      }
+      if (nx > 0.16 && nz > -0.24 && nz < 0.14) {
+        height = Math.max(height, 10.5);
+      }
+      return { height, pitMask: clamp(pitA + pitB * 0.8, 0, 1) };
+    }
+
+    function buildTerrainFromHeightField(heightField, paletteFn) {
+      const positions = terrainGeometry.attributes.position;
+      const colors = [];
+
+      for (let i = 0; i < positions.count; i += 1) {
+        const x = positions.getX(i);
+        const z = positions.getZ(i);
+        const data = heightField(x, z);
+        positions.setY(i, data.height);
+        const color = paletteFn(data.height, data.pitMask || 0, x, z);
+        colors.push(color.r, color.g, color.b);
+      }
+
+      terrainGeometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+      terrainGeometry.computeVertexNormals();
+      positions.needsUpdate = true;
+      terrainGeometry.attributes.color.needsUpdate = true;
+      terrainHeightFn = (x, z) => heightField(x, z).height;
+      rebuildFacilities();
+    }
+
+    function buildTerrainFromRaster(width, height, values, meta) {
+      let min = Infinity;
+      let max = -Infinity;
+      for (let i = 0; i < values.length; i += 1) {
+        const value = values[i];
+        if (value < min) min = value;
+        if (value > max) max = value;
+      }
+      const range = Math.max(max - min, 1);
+      const sx = width - 1;
+      const sy = height - 1;
+
+      buildTerrainFromHeightField((x, z) => {
+        const u = clamp((x + 110) / 220, 0, 1);
+        const v = clamp((z + 90) / 180, 0, 1);
+        const ix = Math.floor(u * sx);
+        const iy = Math.floor((1 - v) * sy);
+        const value = values[iy * width + ix];
+        const normalized = (value - min) / range;
+        return {
+          height: normalized * 42 - 16,
+          pitMask: Math.max(0, 0.7 - normalized)
+        };
+      }, (elevation, pitMask) => {
+        if (elevation < -10) return new THREE.Color(0x8e6a53);
+        if (elevation < -2) return new THREE.Color(0xa98667);
+        if (elevation < 10) return new THREE.Color(0x5b8255);
+        if (elevation < 22) return new THREE.Color(0x6f9460);
+        return new THREE.Color(pitMask > 0.35 ? 0xc6c2b7 : 0x89a27d);
+      });
+
+      updateMeta({
+        name: meta.name,
+        source: meta.source,
+        dimensions: `${width} × ${height}`,
+        pages: String(meta.pages || 1),
+        channels: String(meta.channels || 1),
+        bits: meta.bits || "-",
+        size: formatBytes(meta.size)
+      });
+    }
+
+    function makeBox(width, height, depth, color) {
+      return new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.18 })
+      );
+    }
+
+    function makeCylinder(radiusTop, radiusBottom, height, color) {
+      return new THREE.Mesh(
+        new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 24),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.76, metalness: 0.12 })
+      );
+    }
+
+    function makeConveyor(points) {
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tube = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 42, 1.35, 12, false),
+        new THREE.MeshStandardMaterial({ color: 0x28b5ff, emissive: 0x0d5db4, emissiveIntensity: 0.45, roughness: 0.36, metalness: 0.48 })
+      );
+      const rail = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 42, 0.44, 10, false),
+        new THREE.MeshStandardMaterial({ color: 0xaef3ff, emissive: 0x72ecff, emissiveIntensity: 0.28, roughness: 0.2, metalness: 0.65 })
+      );
+      const group = new THREE.Group();
+      group.add(tube, rail);
+      return group;
+    }
+
+    function sampleTerrain(x, z) {
+      return terrainHeightFn ? terrainHeightFn(x, z) : 0;
+    }
+
+    function rebuildFacilities() {
+      if (facilityGroup) scene.remove(facilityGroup);
+      if (sparkGroup) scene.remove(sparkGroup);
+
+      facilityGroup = new THREE.Group();
+      sparkGroup = new THREE.Group();
+
+      const pad = new THREE.Mesh(
+        new THREE.BoxGeometry(52, 2.2, 34),
+        new THREE.MeshStandardMaterial({ color: 0x2f4b5f, roughness: 0.9, metalness: 0.05 })
+      );
+      pad.position.set(54, sampleTerrain(54, -8) + 1.1, -8);
+      pad.receiveShadow = true;
+      facilityGroup.add(pad);
+
+      const modules = [
+        { x: 40, z: -10, w: 10, h: 6, d: 8 },
+        { x: 52, z: -8, w: 14, h: 7, d: 10 },
+        { x: 67, z: -4, w: 12, h: 10, d: 9 },
+        { x: 76, z: -12, w: 8, h: 8, d: 8 }
+      ];
+
+      modules.forEach((item, index) => {
+        const box = makeBox(item.w, item.h, item.d, index % 2 === 0 ? 0x2d7df4 : 0x1e5fb0);
+        box.position.set(item.x, sampleTerrain(item.x, item.z) + item.h / 2 + 1.2, item.z);
+        box.castShadow = true;
+        box.receiveShadow = true;
+        facilityGroup.add(box);
+      });
+
+      [-24, -10, 6].forEach((z, index) => {
+        const pile = makeCylinder(5.5, 8, 10 + index * 1.4, 0xb6956b);
+        pile.position.set(86 + index * 9, sampleTerrain(86 + index * 9, z) + 5.4, z);
+        pile.castShadow = true;
+        facilityGroup.add(pile);
+      });
+
+      const conveyors = [
+        [[46, -8], [12, -4], [-18, 10]],
+        [[55, -4], [22, 6], [-6, 20]],
+        [[67, -2], [34, 10], [12, 28]]
+      ];
+
+      conveyors.forEach((path, pathIndex) => {
+        const points = path.map(([x, z], idx) => new THREE.Vector3(x, sampleTerrain(x, z) + 7 + idx * 1.2 + pathIndex * 0.3, z));
+        facilityGroup.add(makeConveyor(points));
+      });
+
+      for (let i = 0; i < 28; i += 1) {
+        const spark = new THREE.Mesh(
+          new THREE.SphereGeometry(0.36, 12, 12),
+          new THREE.MeshBasicMaterial({ color: i % 3 === 0 ? 0x72ecff : 0x28b5ff, transparent: true, opacity: 0.82 })
+        );
+        const x = 34 + (i % 7) * 8;
+        const z = -18 + Math.floor(i / 7) * 10;
+        spark.position.set(x, sampleTerrain(x, z) + 9 + (i % 4) * 0.6, z);
+        spark.userData.baseY = spark.position.y;
+        spark.userData.offset = i * 0.6;
+        sparkGroup.add(spark);
+      }
+
+      scene.add(facilityGroup, sparkGroup);
+    }
+
+    function buildScene() {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(mineView.clientWidth, mineView.clientHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      mineView.innerHTML = "";
+      mineView.appendChild(renderer.domElement);
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.Fog(0x06121d, 160, 360);
+
+      camera = new THREE.PerspectiveCamera(42, mineView.clientWidth / mineView.clientHeight, 0.1, 1000);
+      camera.position.set(116, 118, 132);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.45;
+      controls.target.set(0, 8, 0);
+      controls.minDistance = 90;
+      controls.maxDistance = 240;
+      controls.maxPolarAngle = Math.PI / 2.08;
+
+      scene.add(new THREE.AmbientLight(0xa9d8ff, 1.45));
+
+      const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+      sun.position.set(90, 120, 40);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.near = 10;
+      sun.shadow.camera.far = 320;
+      sun.shadow.camera.left = -120;
+      sun.shadow.camera.right = 120;
+      sun.shadow.camera.top = 120;
+      sun.shadow.camera.bottom = -120;
+      scene.add(sun);
+
+      const rim = new THREE.DirectionalLight(0x3fd7ff, 1.1);
+      rim.position.set(-100, 45, -80);
+      scene.add(rim);
+
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(145, 152, 10, 64),
+        new THREE.MeshStandardMaterial({ color: 0x08141f, roughness: 0.96, metalness: 0.05 })
+      );
+      base.position.y = -24;
+      base.receiveShadow = true;
+      scene.add(base);
+
+      const grid = new THREE.GridHelper(240, 24, 0x1ec8ff, 0x11466f);
+      grid.position.y = -18;
+      grid.material.opacity = 0.28;
+      grid.material.transparent = true;
+      scene.add(grid);
+
+      terrainGeometry = new THREE.PlaneGeometry(220, 180, 180, 130);
+      terrainGeometry.rotateX(-Math.PI / 2);
+      terrainMesh = new THREE.Mesh(
+        terrainGeometry,
+        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0.04 })
+      );
+      terrainMesh.castShadow = true;
+      terrainMesh.receiveShadow = true;
+      scene.add(terrainMesh);
+
+      loadDemoScene();
+      window.addEventListener("resize", onResize);
+      animate();
+    }
+
+    function loadDemoScene() {
+      buildTerrainFromHeightField(computeDemoHeight, colorFromHeight);
+      updateMeta({
+        name: "内置 3D 示例",
+        source: "程序生成矿区场景",
+        dimensions: "220 × 180 场景单元",
+        pages: "实时网格",
+        channels: "顶点高程",
+        bits: "WebGL Mesh",
+        size: "无外部大文件"
+      });
+      setStatus("内置三维矿区示例已启动，支持鼠标拖拽旋转查看。", false);
+    }
+
+    async function loadLocalTiff(file) {
+      if (!window.UTIF) {
+        throw new Error("UTIF 解析库未成功加载");
+      }
+
+      const buffer = await file.arrayBuffer();
+      const ifds = window.UTIF.decode(buffer);
+      if (!ifds.length) {
+        throw new Error("未读取到可显示的 TIFF 图层");
+      }
+
+      const page = ifds[0];
+      window.UTIF.decodeImage(buffer, page, ifds);
+      const width = page.width || page.t256;
+      const height = page.height || page.t257;
+      const rgba = window.UTIF.toRGBA8(page);
+      const values = [];
+      for (let i = 0; i < rgba.length; i += 4) {
+        values.push((rgba[i] + rgba[i + 1] + rgba[i + 2]) / 3);
+      }
+
+      buildTerrainFromRaster(width, height, values, {
+        name: file.name || "local.tif",
+        source: "浏览器本地文件",
+        pages: ifds.length,
+        channels: page.t277 || 1,
+        bits: Array.isArray(page.t258) ? page.t258.join(" / ") : (page.t258 || "-"),
+        size: file.size
+      });
+
+      setStatus(`已将 ${file.name} 转换成可旋转三维地形。`, false);
+    }
+
+    function isTiffFile(file) {
+      if (!file) return false;
+      const name = (file.name || "").toLowerCase();
+      return name.endsWith(".tif") || name.endsWith(".tiff") || file.type === "image/tiff";
+    }
+
+    function onResize() {
+      if (!renderer) return;
+      const { clientWidth, clientHeight } = mineView;
+      renderer.setSize(clientWidth, clientHeight);
+      camera.aspect = clientWidth / clientHeight;
+      camera.updateProjectionMatrix();
+    }
+
+    function animate(time = 0) {
+      requestAnimationFrame(animate);
+      controls.update();
+      if (sparkGroup) {
+        sparkGroup.children.forEach((spark, index) => {
+          spark.position.y = spark.userData.baseY + Math.sin(time * 0.0016 + spark.userData.offset) * 0.7;
+          spark.material.opacity = 0.65 + Math.sin(time * 0.002 + index) * 0.2;
+        });
+      }
+      renderer.render(scene, camera);
+    }
+
+    localTiffInput.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!isTiffFile(file)) {
+        setStatus("请选择 .tif 或 .tiff 文件。", true);
+        return;
+      }
+      try {
+        await loadLocalTiff(file);
+      } catch (error) {
+        setStatus(`本地 TIFF 转三维失败：${error.message}`, true);
+      }
+    });
+
+    reloadDefaultButton.addEventListener("click", () => {
+      loadDemoScene();
+    });
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    buildScene();
+  </script>
+</body>
+</html>
